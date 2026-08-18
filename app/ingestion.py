@@ -30,10 +30,16 @@ def store_stock_data(data, ticker="AAPL"):
 
     If we already have a row for the same ticker and date, we update
     that row rather than creating a duplicate.
+
+    I also keep track of how many rows were stored and how many
+    had to be skipped.
     """
 
     connection = get_connection()
     cursor = connection.cursor()
+
+    rows_stored = 0
+    rows_skipped = 0
 
     # yfinance gives us a pandas DataFrame, so we go through each daily row.
     for date, row in data.iterrows():
@@ -41,7 +47,12 @@ def store_stock_data(data, ticker="AAPL"):
         # Sometimes the API can return an incomplete row.
         # I'd rather skip that row than store incomplete stock data.
         if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
-            print(f"Skipping incomplete data for {date.strftime('%Y-%m-%d')}.")
+            print(
+                f"Skipping incomplete data for "
+                f"{date.strftime('%Y-%m-%d')}."
+            )
+
+            rows_skipped += 1
             continue
 
         cursor.execute(
@@ -76,14 +87,18 @@ def store_stock_data(data, ticker="AAPL"):
             ),
         )
 
+        rows_stored += 1
+
     connection.commit()
     connection.close()
+
+    return rows_stored, rows_skipped
 
 
 def ingest_stock_data(ticker="AAPL"):
     """
-    Run the full ingestion process:
-    get the data from Yahoo Finance and then store it in SQLite.
+    Run the full ingestion process and return a small summary
+    of what happened.
     """
 
     print(f"Fetching stock data for {ticker}...")
@@ -95,19 +110,43 @@ def ingest_stock_data(ticker="AAPL"):
         # trying to insert nothing into the database.
         if data.empty:
             print(f"No stock data was returned for {ticker}.")
-            return 0
 
-        print(f"Fetched {len(data)} rows.")
+            return {
+                "ticker": ticker.upper(),
+                "rows_fetched": 0,
+                "rows_stored": 0,
+                "rows_skipped": 0,
+            }
 
-        store_stock_data(data, ticker)
+        rows_fetched = len(data)
 
-        print("Stock data saved successfully.")
+        print(f"Fetched {rows_fetched} rows.")
 
-        return len(data)
+        rows_stored, rows_skipped = store_stock_data(
+            data,
+            ticker,
+        )
+
+        print(
+            f"Stored {rows_stored} rows. "
+            f"Skipped {rows_skipped} rows."
+        )
+
+        return {
+            "ticker": ticker.upper(),
+            "rows_fetched": rows_fetched,
+            "rows_stored": rows_stored,
+            "rows_skipped": rows_skipped,
+        }
 
     except Exception as error:
         # For this small project a simple error message is enough.
         # With more time I'd replace this with proper application logging.
         print(f"Something went wrong during ingestion: {error}")
 
-        return 0
+        return {
+            "ticker": ticker.upper(),
+            "rows_fetched": 0,
+            "rows_stored": 0,
+            "rows_skipped": 0,
+        }

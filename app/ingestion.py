@@ -38,6 +38,12 @@ def store_stock_data(data, ticker="AAPL"):
     # yfinance gives us a pandas DataFrame, so we go through each daily row.
     for date, row in data.iterrows():
 
+        # Sometimes the API can return an incomplete row.
+        # I'd rather skip that row than store incomplete stock data.
+        if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
+            print(f"Skipping incomplete data for {date.strftime('%Y-%m-%d')}.")
+            continue
+
         cursor.execute(
             """
             INSERT INTO stock_prices (

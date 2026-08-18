@@ -1,0 +1,17 @@
+# Don't copy my local virtual environment into Docker.
+venv/
+.venv/
+
+# Python creates these automatically.
+__pycache__/
+*.pyc
+
+# Git files aren't needed inside the container.
+.git/
+
+# Don't copy my local database into the image.
+data/*.db
+
+# Local development files.
+.env
+.vscode/

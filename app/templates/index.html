@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,18 +8,30 @@
     <title>Apple Stock Data</title>
 
     <style>
+        /* Keep the page simple and readable without needing a separate CSS file. */
         body {
             font-family: Arial, sans-serif;
             max-width: 1100px;
             margin: 40px auto;
             padding: 0 20px;
             background: #f5f5f5;
+            color: #222;
         }
 
         h1 {
             margin-bottom: 5px;
         }
 
+        h2 {
+            margin-top: 0;
+        }
+
+        .intro {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        /* Reusable card style for the latest stock information. */
         .latest {
             background: white;
             padding: 20px;
@@ -26,10 +39,33 @@
             border-radius: 8px;
         }
 
+        .price {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .refresh-section {
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
+            margin-top: 20px;
         }
 
         th,
@@ -39,15 +75,35 @@
             text-align: right;
         }
 
+        /* Keep the date column aligned differently from the numeric values. */
         th:first-child,
         td:first-child {
             text-align: left;
         }
 
-        button {
-            padding: 10px 16px;
-            margin-bottom: 20px;
-            cursor: pointer;
+        th {
+            background: #eeeeee;
+        }
+
+        .about {
+            background: white;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 8px;
+            line-height: 1.6;
+        }
+
+        .api-link {
+            margin-top: 15px;
+        }
+
+        a {
+            color: #0066cc;
+        }
+
+        .status-message {
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -56,26 +112,97 @@
 
     <h1>Apple Stock Data</h1>
 
-    <p>
-        Latest stored daily stock data for Apple (AAPL).
-    </p>
+    <div class="intro">
+        <p>
+            This page shows the Apple stock data currently stored by the application.
+            The data is fetched from Yahoo Finance and stored in a SQLite database.
+        </p>
 
+        <p>
+            You can use the refresh button below to fetch the latest available
+            Apple stock data and update the database.
+        </p>
+    </div>
+
+
+    <!--
+        Jinja checks whether FastAPI passed a latest stock record into the template.
+        If data exists, we show the latest price. Otherwise we show a helpful message.
+    -->
     {% if latest %}
 
         <div class="latest">
-            <h2>Latest Price</h2>
+
+            <h2>Latest Stored Price</h2>
+
+            <!-- Format the stored close price to two decimal places. -->
+            <p class="price">
+                ${{ "%.2f"|format(latest.close) }}
+            </p>
 
             <p>
-                <strong>${{ "%.2f"|format(latest.close) }}</strong>
-                on {{ latest.date }}
+                AAPL on {{ latest.date }}
             </p>
+
+            <p>
+                This is the most recent record currently stored in the database.
+            </p>
+
         </div>
 
-        <button onclick="refreshData()">
-            Refresh Stock Data
+    {% else %}
+
+        <div class="latest">
+
+            <h2>No Stock Data Yet</h2>
+
+            <p>
+                There is currently no Apple stock data stored in the database.
+                Use the button below to load the latest available data.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+
+    <div class="refresh-section">
+
+        <!--
+            Change the button text depending on whether data already exists.
+            This makes the page a bit clearer for somebody using it for the first time.
+        -->
+        <button id="refresh-button" onclick="refreshData()">
+            {% if latest %}
+                Refresh Stock Data
+            {% else %}
+                Load Apple Stock Data
+            {% endif %}
         </button>
 
+        <p>
+            This will request fresh AAPL data from Yahoo Finance and save it
+            into the SQLite database.
+        </p>
+
+        <!-- JavaScript updates this with progress or error messages. -->
+        <p id="status-message" class="status-message"></p>
+
+    </div>
+
+
+    <!-- Only show the table if we actually have stock data to display. -->
+    {% if stock_data %}
+
+        <h2>Stored Stock Data</h2>
+
+        <p>
+            The table below shows the daily Apple stock records currently
+            stored in the database, with the newest dates first.
+        </p>
+
         <table>
+
             <thead>
                 <tr>
                     <th>Date</th>
@@ -89,43 +216,89 @@
 
             <tbody>
 
+                <!--
+                    Jinja loops through each row returned from SQLite
+                    and creates one HTML table row for each stock record.
+                -->
                 {% for row in stock_data %}
 
-                <tr>
-                    <td>{{ row.date }}</td>
-                    <td>{{ "%.2f"|format(row.open) }}</td>
-                    <td>{{ "%.2f"|format(row.high) }}</td>
-                    <td>{{ "%.2f"|format(row.low) }}</td>
-                    <td>{{ "%.2f"|format(row.close) }}</td>
-                    <td>{{ "{:,}".format(row.volume) }}</td>
-                </tr>
+                    <tr>
+                        <td>{{ row.date }}</td>
+                        <td>${{ "%.2f"|format(row.open) }}</td>
+                        <td>${{ "%.2f"|format(row.high) }}</td>
+                        <td>${{ "%.2f"|format(row.low) }}</td>
+                        <td>${{ "%.2f"|format(row.close) }}</td>
+                        <td>{{ "{:,}".format(row.volume) }}</td>
+                    </tr>
 
                 {% endfor %}
 
             </tbody>
+
         </table>
-
-    {% else %}
-
-        <p>No stock data has been loaded yet.</p>
-
-        <button onclick="refreshData()">
-            Load Apple Stock Data
-        </button>
 
     {% endif %}
 
 
+    <div class="about">
+
+        <h2>About This Project</h2>
+
+        <p>
+            This is a small data engineering project showing a simple flow
+            from an external data source through to storage and a display layer.
+        </p>
+
+        <pre>
+Yahoo Finance
+      ↓
+Data ingestion
+      ↓
+SQLite database
+      ↓
+FastAPI
+      ↓
+This page
+        </pre>
+
+        <p>
+            The application also exposes the stored data directly through
+            API endpoints.
+        </p>
+
+        <p class="api-link">
+            <a href="/docs">
+                Open the FastAPI API documentation
+            </a>
+        </p>
+
+    </div>
+
+
     <script>
+        /*
+            Refresh the stock data without making the user manually
+            visit the POST endpoint in Swagger.
+        */
         async function refreshData() {
 
-            const button = document.querySelector("button");
+            const button = document.getElementById("refresh-button");
+            const statusMessage = document.getElementById("status-message");
 
+            // Disable the button while the request is running so it
+            // isn't clicked several times by accident.
             button.disabled = true;
             button.innerText = "Updating...";
 
+            statusMessage.innerText =
+                "Fetching the latest available stock data...";
+
             try {
 
+                /*
+                    Call the FastAPI ingestion endpoint.
+                    This fetches fresh AAPL data and stores it in SQLite.
+                */
                 const response = await fetch(
                     "/stocks/AAPL/ingest",
                     {
@@ -134,15 +307,38 @@
                 );
 
                 if (!response.ok) {
-                    throw new Error("Stock data could not be updated.");
+                    throw new Error(
+                        "The stock data could not be updated."
+                    );
                 }
 
-                // Reload the page so the newest values appear.
-                window.location.reload();
+                // Read the ingestion summary returned by FastAPI.
+                const result = await response.json();
+
+                statusMessage.innerText =
+                    "Update complete. Fetched " +
+                    result.rows_fetched +
+                    " rows, stored " +
+                    result.rows_stored +
+                    " and skipped " +
+                    result.rows_skipped +
+                    ".";
+
+                /*
+                    Give the user a moment to see the result before
+                    reloading the page with the latest stored values.
+                */
+                setTimeout(
+                    function () {
+                        window.location.reload();
+                    },
+                    1500
+                );
 
             } catch (error) {
 
-                alert(error.message);
+                // Keep the page usable if the API request fails.
+                statusMessage.innerText = error.message;
 
                 button.disabled = false;
                 button.innerText = "Refresh Stock Data";
@@ -151,4 +347,5 @@
     </script>
 
 </body>
+
 </html>

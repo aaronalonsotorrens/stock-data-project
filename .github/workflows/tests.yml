@@ -1,0 +1,42 @@
+name: Run Tests
+
+# Run these checks whenever I push to main
+# or open a pull request against main.
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+
+jobs:
+  test:
+
+    # GitHub gives us a fresh temporary machine to run the project on.
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Get the latest version of the repository code.
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Set up the Python version used by this project.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Install all of the project dependencies.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      # Run the same automated tests that I run locally.
+      - name: Run tests
+        run: |
+          python -m pytest

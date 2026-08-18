@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Apple Stock Data</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .latest {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: right;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Apple Stock Data</h1>
+
+    <p>
+        Latest stored daily stock data for Apple (AAPL).
+    </p>
+
+    {% if latest %}
+
+        <div class="latest">
+            <h2>Latest Price</h2>
+
+            <p>
+                <strong>${{ "%.2f"|format(latest.close) }}</strong>
+                on {{ latest.date }}
+            </p>
+        </div>
+
+        <button onclick="refreshData()">
+            Refresh Stock Data
+        </button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Open</th>
+                    <th>High</th>
+                    <th>Low</th>
+                    <th>Close</th>
+                    <th>Volume</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for row in stock_data %}
+
+                <tr>
+                    <td>{{ row.date }}</td>
+                    <td>{{ "%.2f"|format(row.open) }}</td>
+                    <td>{{ "%.2f"|format(row.high) }}</td>
+                    <td>{{ "%.2f"|format(row.low) }}</td>
+                    <td>{{ "%.2f"|format(row.close) }}</td>
+                    <td>{{ "{:,}".format(row.volume) }}</td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+        </table>
+
+    {% else %}
+
+        <p>No stock data has been loaded yet.</p>
+
+        <button onclick="refreshData()">
+            Load Apple Stock Data
+        </button>
+
+    {% endif %}
+
+
+    <script>
+        async function refreshData() {
+
+            const button = document.querySelector("button");
+
+            button.disabled = true;
+            button.innerText = "Updating...";
+
+            try {
+
+                const response = await fetch(
+                    "/stocks/AAPL/ingest",
+                    {
+                        method: "POST"
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Stock data could not be updated.");
+                }
+
+                // Reload the page so the newest values appear.
+                window.location.reload();
+
+            } catch (error) {
+
+                alert(error.message);
+
+                button.disabled = false;
+                button.innerText = "Refresh Stock Data";
+            }
+        }
+    </script>
+
+</body>
+</html>

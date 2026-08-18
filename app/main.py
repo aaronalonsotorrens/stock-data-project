@@ -1,9 +1,11 @@
 import sqlite3
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 
 from app.database import get_connection, initialise_database
 from app.ingestion import ingest_stock_data
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 
 # Create the FastAPI app.

@@ -1,21 +1,25 @@
 import sqlite3
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.database import get_connection, initialise_database
 from app.ingestion import ingest_stock_data
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 
 # Create the FastAPI app.
 # FastAPI also gives us an interactive /docs page, which is handy
-# for testing the project without needing to build a full frontend.
+# for testing the API directly.
 app = FastAPI(
     title="Stock Data API",
     description="A small API for storing and retrieving Apple stock data.",
     version="1.0.0",
 )
+
+
+# Tell FastAPI where the HTML template for the frontend lives.
+templates = Jinja2Templates(directory="app/templates")
 
 
 @app.on_event("startup")
@@ -28,15 +32,57 @@ def startup():
     initialise_database()
 
 
-@app.get("/")
-def root():
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
     """
-    Simple route so I can quickly check that the API is running.
+    Show a simple frontend with the Apple stock data.
+
+    I wanted something a bit easier to look at than just the Swagger
+    page, while still keeping the frontend pretty small.
     """
 
-    return {
-        "message": "Stock Data API is running"
-    }
+    connection = get_connection()
+    connection.row_factory = sqlite3.Row
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            ticker,
+            date,
+            open,
+            high,
+            low,
+            close,
+            volume
+        FROM stock_prices
+        WHERE ticker = ?
+        ORDER BY date DESC
+        """,
+        ("AAPL",),
+    )
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    # Turn the SQLite rows into normal dictionaries so they're
+    # easier to use inside the HTML template.
+    stock_data = [dict(row) for row in rows]
+
+    # Because the data is ordered newest first, the first row
+    # is the latest record if we have any data stored.
+    latest = stock_data[0] if stock_data else None
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "stock_data": stock_data,
+            "latest": latest,
+        },
+    )
 
 
 @app.get("/health")
@@ -149,19 +195,18 @@ def ingest(ticker: str):
     """
     Fetch fresh stock data and save it into the database.
 
-    We're mainly using AAPL for this task, but keeping ticker as an
-    argument means the same setup can work for another stock later.
+    The response also gives a small summary of what happened
+    during the ingestion.
     """
 
-    rows_processed = ingest_stock_data(ticker.upper())
+    result = ingest_stock_data(ticker.upper())
 
-    if rows_processed == 0:
+    # If nothing was fetched at all, something probably went wrong
+    # with the external data request.
+    if result["rows_fetched"] == 0:
         raise HTTPException(
             status_code=500,
             detail=f"No data could be ingested for {ticker.upper()}",
         )
 
-    return {
-        "message": f"Stock data ingested for {ticker.upper()}",
-        "rows_processed": rows_processed,
-    }
+    return result

@@ -2,8 +2,6 @@
 
 ## Project Overview
 
-This project was built as part of a Data Engineer final interview task.
-
 The aim was to build a small end-to-end application that can fetch Apple stock data, store it in a database, and make that data available through a simple interface.
 
 I tried to keep the project fairly small and understandable rather than adding technology that was not really needed for the task.

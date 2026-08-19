@@ -8,19 +8,18 @@ The aim was to build a small end-to-end application that can fetch Apple stock d
 
 I tried to keep the project fairly small and understandable rather than adding technology that was not really needed for the task.
 
-The application currently:
+The application:
 
 - Fetches Apple stock data from Yahoo Finance using `yfinance`.
-- Validates the returned data before storing it.
+- Validates the data before storing it.
 - Stores daily stock prices in SQLite.
 - Prevents duplicate ticker/date records.
 - Makes the stored data available through FastAPI.
 - Provides a small HTML/Jinja2 frontend.
 - Runs locally or through Docker.
-- Uses a Docker volume so the SQLite database persists between containers.
+- Uses a Docker volume so the database persists between containers.
 - Includes automated tests using pytest.
-- Uses temporary databases during ingestion tests so the real local database is not changed.
-- Uses GitHub Actions to automatically run the tests after code changes.
+- Uses GitHub Actions for formatting, testing and Docker build checks.
 
 The main stock used and tested throughout the project is:
 
@@ -30,62 +29,100 @@ AAPL
 
 ---
 
-## Quick Start
+## Application Preview
+
+The frontend gives a simple view of the latest stored Apple stock data and allows ingestion to be triggered without needing to call the API directly.
+
+![Latest Apple stock data and refresh control](app/static/readme-images/frontend-overview.png)
+
+The stored daily records are displayed in a simple table, with the newest trading date shown first.
+
+![Stored Apple stock data](app/static/readme-images/stock-table.png)
+
+On a fresh installation the database starts empty, so the frontend first shows a clear empty state with a **Load Apple Stock Data** button.
+
+---
+
+# Quick Start
 
 The easiest way to run the project is through Docker.
 
-### 1. Clone the repository
+## 1. Clone the repository
 
 ```bash
 git clone https://github.com/aaronalonsotorrens/stock-data-project.git
 cd stock-data-project
 ```
 
-### 2. Build the Docker image
+## 2. Build the Docker image
 
 ```powershell
 docker build -t stock-data-api .
 ```
 
-### 3. Create the persistent database volume
+## 3. Create the database volume
 
 ```powershell
 docker volume create stock-data
 ```
 
-### 4. Start the application
+This keeps the SQLite database separate from the container so the stored data is not lost when a container is removed.
+
+## 4. Start the application
 
 ```powershell
 docker run --name stock-data-container -p 8000:8000 -v stock-data:/app/data stock-data-api
 ```
 
-### 5. Open the application
+If Docker says that `stock-data-container` already exists, remove the old container first:
 
-Frontend:
+```powershell
+docker rm -f stock-data-container
+```
+
+and then run the `docker run` command again.
+
+Uvicorn may show:
+
+```text
+http://0.0.0.0:8000
+```
+
+in the Docker logs.
+
+This is the address Uvicorn listens on inside the container. From the browser, open the application through:
 
 ```text
 http://localhost:8000
 ```
 
-FastAPI / Swagger documentation:
+FastAPI / Swagger documentation is available at:
 
 ```text
 http://localhost:8000/docs
 ```
 
-If the database is empty, click **Refresh Stock Data** on the frontend.
+### First Run
 
-Alternatively, ingestion can be triggered directly through the API:
+On a fresh installation, the database will initially be empty. This is expected.
+
+Open the frontend and click **Load Apple Stock Data**.
+
+This runs the ingestion process, fetches the latest available AAPL data from Yahoo Finance, validates it and stores it in SQLite.
+
+Once the data has been loaded, the page will show the latest stored closing price and the daily stock records.
+
+The button will then change to **Refresh Stock Data**, which can be used to run ingestion again and update the stored records.
+
+Ingestion can also be triggered directly through the API:
 
 ```text
 POST /stocks/AAPL/ingest
 ```
 
-This fetches the latest available Apple stock data from Yahoo Finance and stores it in SQLite.
-
 ---
 
-### Running Without Docker
+## Running Without Docker
 
 The project can also be run directly with Python.
 
@@ -102,7 +139,7 @@ Install the dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Initialise the database and fetch Apple stock data:
+Initialise the database and load Apple stock data:
 
 ```powershell
 python run.py
@@ -126,9 +163,21 @@ The API documentation is available at:
 http://localhost:8000/docs
 ```
 
+To run the automated tests:
+
+```powershell
+python -m pytest
+```
+
+To check the Python formatting:
+
+```powershell
+python -m black . --check
+```
+
 ---
 
-## Architecture
+# Architecture
 
 The main application flow is:
 
@@ -145,11 +194,11 @@ Data validation
       ↓
    FastAPI
     ↙     ↘
-HTML       API
-Frontend   /docs
+Frontend   API
+           /docs
 ```
 
-When Docker is used, the SQLite database is stored separately from the container using a Docker volume:
+When Docker is used, the database is stored separately from the container:
 
 ```text
 Docker Container
@@ -161,23 +210,27 @@ Docker Container
    stocks.db
 ```
 
-The project also has a small CI workflow:
+The CI workflow is:
 
 ```text
-Push to GitHub
-      ↓
+Push / Pull Request
+        ↓
 GitHub Actions
-      ↓
+        ↓
 Install dependencies
-      ↓
+        ↓
+Black formatting check
+        ↓
 Run pytest
-      ↓
+        ↓
+Build Docker image
+        ↓
 Pass / Fail
 ```
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 stock-data-project/
@@ -187,8 +240,15 @@ stock-data-project/
 │       └── tests.yml
 │
 ├── app/
+│   ├── static/
+│   │   ├── readme-images/
+│   │   │   ├── frontend-overview.png
+│   │   │   └── stock-table.png
+│   │   └── styles.css
+│   │
 │   ├── templates/
 │   │   └── index.html
+│   │
 │   ├── __init__.py
 │   ├── database.py
 │   ├── ingestion.py
@@ -213,10 +273,11 @@ The main responsibilities are split between:
 
 - `database.py` – database setup and connections.
 - `ingestion.py` – fetching, validating and storing stock data.
-- `main.py` – FastAPI endpoints and frontend route.
-- `index.html` – small user-facing frontend.
-- `test_api.py` – automated API/frontend tests.
-- `test_ingestion.py` – automated tests for ingestion validation and duplicate handling.
+- `main.py` – FastAPI endpoints and the frontend route.
+- `index.html` – structure and behaviour for the frontend.
+- `styles.css` – simple styling for the frontend.
+- `test_api.py` – API and frontend tests.
+- `test_ingestion.py` – ingestion validation and duplicate handling tests.
 
 ---
 
@@ -248,13 +309,15 @@ For example:
 fetch_stock_data("AAPL")
 ```
 
+This keeps the current task simple while making it fairly easy to support another ticker later.
+
 ---
 
 ## Data Validation
 
 One of the first issues I found was that Yahoo Finance did not always return completely clean data.
 
-During one ingestion run, 21 rows were returned but one contained a missing stock price value.
+During one ingestion run, one row contained a missing stock price value.
 
 Because the database fields are required, this caused:
 
@@ -262,7 +325,7 @@ Because the database fields are required, this caused:
 NOT NULL constraint failed: stock_prices.close
 ```
 
-Rather than allowing incomplete values in the database, I added validation before each row is stored:
+Rather than weakening the database constraint and allowing incomplete values, I added validation before each row is stored:
 
 ```python
 if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
@@ -270,15 +333,15 @@ if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
     continue
 ```
 
-This allows valid rows to continue being stored while incomplete records are skipped.
+Valid rows can therefore still be stored while incomplete records are skipped.
 
-I also added an automated test around this behaviour to make sure an incomplete row is skipped and is not written to the database.
+I also added an automated test around this behaviour rather than relying on Yahoo Finance to return another incomplete row during testing.
 
 ---
 
-## Ingestion Statistics
+## Ingestion Summary
 
-The ingestion process returns a small summary:
+The ingestion process returns a small summary such as:
 
 ```json
 {
@@ -291,15 +354,17 @@ The ingestion process returns a small summary:
 
 This makes it easier to see what actually happened during an ingestion run rather than just returning one general processed-row count.
 
+`rows_stored` represents the number of valid rows successfully written or updated in the database.
+
 ---
 
 # 2. Data Storage
 
-## SQLite
+## Why SQLite?
 
-I chose SQLite because the amount of data and the scope of the task are both small.
+I chose SQLite because both the amount of data and the scope of the task are small.
 
-It keeps the project easy to run because there is no separate database server to install or configure.
+It also keeps the project easy to run because there is no separate database server to install or configure.
 
 For a larger application with significantly more data, users or concurrent processes, I would probably move the storage layer to something like PostgreSQL.
 
@@ -334,9 +399,9 @@ The table also contains:
 UNIQUE(ticker, date)
 ```
 
-This prevents multiple records being created for the same stock and date.
+This prevents multiple records being created for the same ticker and date.
 
-If that ticker/date already exists, ingestion uses:
+If the ticker/date already exists, ingestion uses:
 
 ```sql
 ON CONFLICT(ticker, date)
@@ -345,9 +410,9 @@ DO UPDATE
 
 so the existing record is updated instead.
 
-This means the ingestion can safely be run more than once.
+This means ingestion can safely be run more than once without creating duplicate daily records.
 
-I added an automated test that stores the same ticker and date twice and checks that only one database record exists afterwards.
+I also added an automated test that stores the same ticker and date twice and checks that only one database record exists afterwards.
 
 ---
 
@@ -355,9 +420,34 @@ I added an automated test that stores the same ticker and date twice and checks 
 
 The application originally only used FastAPI's Swagger interface.
 
-Although that worked for testing the API, I felt it was not particularly friendly for somebody opening the project for the first time.
+That worked for testing the API, but I felt it was not particularly friendly for somebody opening the project for the first time.
 
-I therefore added a small HTML frontend using Jinja2.
+I didn't want to assume that whoever used it would necessarily be technical or know what the Swagger page was showing, so I added a small HTML frontend using Jinja2.
+
+The frontend shows:
+
+- The latest stored Apple closing price.
+- The date of that stored price.
+- A table of the stored daily data.
+- A button to load or refresh the stock data.
+- A short explanation of what the data represents.
+- A link to the technical API documentation.
+
+On a completely fresh database there is no stock data to display yet.
+
+Rather than automatically running ingestion in the background, I decided to make that state explicit.
+
+The page explains that the database is fresh and provides a **Load Apple Stock Data** button.
+
+Clicking the button runs the ingestion process and stores the data. Once data is available, the same button becomes **Refresh Stock Data**.
+
+I preferred keeping ingestion as an explicit action rather than automatically changing the database simply because somebody opened the frontend.
+
+I also made it clear that the displayed value is the latest price stored by the application rather than a live market price.
+
+I kept the styling fairly simple, but added clearer status messages, visible keyboard focus and a table that remains usable on smaller screens.
+
+I deliberately stopped there rather than adding something like React, charts or more complex frontend functionality because the main focus of the task is the data pipeline.
 
 The frontend is available at:
 
@@ -365,21 +455,11 @@ The frontend is available at:
 http://localhost:8000
 ```
 
-It shows:
-
-- The latest stored Apple stock price.
-- The latest stored date.
-- A table of the stored daily stock data.
-- A button to fetch fresh stock data.
-- A short explanation of the project.
-
-FastAPI's Swagger interface is still available at:
+Swagger is available at:
 
 ```text
 http://localhost:8000/docs
 ```
-
-I deliberately kept the frontend small rather than adding something like React because the main focus of the task is the data pipeline rather than frontend development.
 
 ---
 
@@ -391,15 +471,9 @@ I deliberately kept the frontend small rather than adding something like React b
 GET /health
 ```
 
-Returns:
+Confirms that the application itself is running.
 
-```json
-{
-    "status": "healthy"
-}
-```
-
-### Get Stored Stock Data
+### Stored Stock Data
 
 ```text
 GET /stocks/{ticker}
@@ -411,17 +485,17 @@ Example:
 GET /stocks/AAPL
 ```
 
-Returns all stored records for the ticker, newest first.
+Returns the stored records for the ticker, newest first.
 
-### Get Latest Stock Record
+### Latest Stored Record
 
 ```text
 GET /stocks/{ticker}/latest
 ```
 
-Returns only the most recent stored record.
+Returns the most recent stored record for the ticker.
 
-### Run Stock Ingestion
+### Run Ingestion
 
 ```text
 POST /stocks/{ticker}/ingest
@@ -433,16 +507,7 @@ Example:
 POST /stocks/AAPL/ingest
 ```
 
-Returns an ingestion summary such as:
-
-```json
-{
-    "ticker": "AAPL",
-    "rows_fetched": 21,
-    "rows_stored": 21,
-    "rows_skipped": 0
-}
-```
+Fetches the latest available stock data, stores it and returns a small ingestion summary.
 
 ---
 
@@ -452,71 +517,44 @@ Returns an ingestion summary such as:
 
 I chose Docker because it gives the project a repeatable environment without needing to add unnecessary cloud infrastructure.
 
-The basic flow is:
+A new user can:
 
 ```text
 Clone repository
       ↓
-Build Docker image
+Build image
+      ↓
+Create volume
       ↓
 Run container
       ↓
 Use application
 ```
 
-Build the image using:
+I tested this process using a completely fresh clone of the GitHub repository rather than only using my existing development copy.
 
-```powershell
-docker build -t stock-data-api .
-```
-
-Create the persistent database volume:
-
-```powershell
-docker volume create stock-data
-```
-
-Run the application:
-
-```powershell
-docker run --name stock-data-container -p 8000:8000 -v stock-data:/app/data stock-data-api
-```
-
-The frontend is then available at:
-
-```text
-http://localhost:8000
-```
-
-and Swagger at:
-
-```text
-http://localhost:8000/docs
-```
+This helped catch an issue with the frontend stylesheet that had not been obvious from my existing local setup.
 
 ---
 
-## Docker Data Persistence
+## Data Persistence
 
-Initially, the SQLite database existed only inside the Docker container.
-
-That meant removing the container would also remove the stored data.
-
-I changed the setup to mount:
+The SQLite database is stored through a Docker volume mounted at:
 
 ```text
 /app/data
 ```
 
-to the Docker volume:
+I tested persistence by:
 
-```text
-stock-data
-```
+1. Loading Apple stock data.
+2. Stopping and removing the container.
+3. Creating a new container using the same volume.
+4. Opening the application without running ingestion again.
 
-I tested this by loading the Apple data, deleting the container, creating another container using the same volume and checking the application without running ingestion again.
+The existing stock data was still available.
 
-The data was still available, confirming that the database persisted independently of the container.
+This means the application's stored data is not tied to the lifetime of one Docker container.
 
 ---
 
@@ -524,7 +562,7 @@ The data was still available, confirming that the database persisted independent
 
 I tested the application throughout development rather than building everything first and debugging it at the end.
 
-Some of the main checks completed were:
+Some of the main checks were:
 
 | Test | Result |
 | --- | --- |
@@ -532,15 +570,17 @@ Some of the main checks completed were:
 | SQLite database is created | ✅ Pass |
 | Stock data is stored | ✅ Pass |
 | Incomplete records are skipped | ✅ Pass |
-| Duplicate dates are prevented | ✅ Pass |
+| Duplicate ticker/date records are prevented | ✅ Pass |
 | API returns stored data | ✅ Pass |
 | Latest stock endpoint works | ✅ Pass |
 | API ingestion works | ✅ Pass |
 | HTML frontend loads | ✅ Pass |
+| CSS is served correctly | ✅ Pass |
 | Docker image builds and runs | ✅ Pass |
+| Fresh GitHub clone runs through Docker | ✅ Pass |
 | SQLite persists through Docker volume | ✅ Pass |
 | Automated tests run locally | ✅ Pass |
-| GitHub Actions tests pass | ✅ Pass |
+| Black formatting check runs locally | ✅ Pass |
 
 ---
 
@@ -548,28 +588,28 @@ Some of the main checks completed were:
 
 I added a small pytest test suite using FastAPI's `TestClient` and temporary SQLite databases.
 
-The current automated tests check that:
+The five automated tests currently check that:
 
 - `/health` returns a successful response.
 - An unknown ticker returns `404`.
-- The HTML homepage loads successfully.
+- The HTML homepage loads.
 - An incomplete stock row is skipped rather than stored.
 - Ingesting the same ticker and date twice does not create a duplicate record.
 
-The ingestion tests use a temporary SQLite database rather than my normal `stocks.db`.
+The ingestion tests use temporary SQLite databases rather than the normal `stocks.db`.
 
-This means the tests can check database behaviour without changing the real local application data.
+This means the tests can check database behaviour without changing the real application data.
 
-The tests can be run using:
+Run them with:
 
 ```powershell
 python -m pytest
 ```
 
-Current result:
+The current suite contains:
 
 ```text
-5 passed
+5 tests
 ```
 
 I kept the suite focused on a few behaviours that are important to this project rather than trying to test every line of code.
@@ -578,9 +618,9 @@ I kept the suite focused on a few behaviours that are important to this project 
 
 # GitHub Actions / CI
 
-I added GitHub Actions so the project is also tested outside my local environment.
+I added GitHub Actions so the project is checked in a fresh environment as well as on my own machine.
 
-The workflow runs when code is pushed to `main` or a pull request is opened.
+The workflow runs when code is pushed to `main` or when a pull request is opened.
 
 It:
 
@@ -589,20 +629,30 @@ Checks out repository
         ↓
 Sets up Python
         ↓
-Installs requirements
+Installs dependencies
+        ↓
+Checks formatting with Black
         ↓
 Runs pytest
+        ↓
+Builds the Docker image
 ```
 
-The same five automated tests are therefore run in a fresh environment whenever the workflow is triggered.
+The workflow therefore checks three slightly different things:
 
-This became particularly useful because CI exposed a hidden problem with my tests relying on my local database.
+- The Python formatting is consistent.
+- The five automated tests pass.
+- The Docker image can still be built successfully.
+
+I would describe this as CI rather than full CI/CD because the application is not automatically deployed anywhere.
+
+CI ended up being particularly useful because it exposed a hidden dependency on my local database.
 
 ---
 
 # Problems I Hit and How I Solved Them
 
-## Missing Yahoo Finance Data
+## Incomplete Yahoo Finance Data
 
 Yahoo Finance returned an incomplete row, which caused the SQLite `NOT NULL` constraint to fail.
 
@@ -628,9 +678,9 @@ worked correctly, so I used that for installing project dependencies.
 
 ## Docker Build Context Was Too Large
 
-My first Docker build sent around 175 MB as the build context because local files such as the virtual environment were being included.
+My first Docker build sent around 175 MB as the build context because local development files, including the virtual environment, were being included.
 
-I added a `.dockerignore` containing entries such as:
+I added a `.dockerignore` with entries such as:
 
 ```text
 venv/
@@ -643,7 +693,7 @@ data/*.db
 .vscode/
 ```
 
-This stopped unnecessary development files being sent to Docker.
+This stopped unnecessary local files being sent to Docker.
 
 ---
 
@@ -669,7 +719,7 @@ The application now creates the database itself when needed.
 
 ---
 
-## GitHub Actions Exposed a Hidden Database Dependency
+## CI Exposed a Hidden Database Dependency
 
 After removing `stocks.db` from Git, GitHub Actions failed with:
 
@@ -677,9 +727,9 @@ After removing `stocks.db` from Git, GitHub Actions failed with:
 sqlite3.OperationalError: no such table: stock_prices
 ```
 
-The tests had been working locally because my machine already had a database and table.
+The tests had been working locally because my machine already had the database and table.
 
-GitHub Actions uses a fresh environment, which exposed this hidden dependency.
+GitHub Actions starts from a fresh environment, which exposed that hidden dependency.
 
 I fixed it by using FastAPI's `TestClient` as a context manager:
 
@@ -690,91 +740,62 @@ with TestClient(app) as client:
 
 This makes sure FastAPI's startup logic runs during the tests.
 
-The startup process calls:
+The startup process creates the database and table if they do not already exist.
 
-```python
-initialise_database()
-```
+The workflow then worked from a fresh environment.
 
-so a fresh environment now creates the database and table before the tests run.
-
-After that change, the GitHub Actions workflow passed again.
-
-This was probably one of the more useful issues I hit because CI caught something that my own local environment had hidden.
+This was probably one of the more useful issues I hit because CI found something that my own local setup had hidden.
 
 ---
 
-# Technologies Used
+## Stylesheet Filename Mismatch
 
-- **Python 3**
-- **yfinance**
-- **Pandas**
-- **SQLite**
+When I tested the project from a completely fresh clone, the frontend loaded but none of the styling appeared.
+
+The application logs showed:
+
+```text
+GET /static/styles.css 404 Not Found
+```
+
+The HTML was requesting:
+
+```text
+styles.css
+```
+
+but the repository still contained:
+
+```text
+style.css
+```
+
+I renamed the file so they matched, rebuilt the Docker image and repeated the clean-clone test.
+
+The stylesheet then returned:
+
+```text
+200 OK
+```
+
+and the frontend loaded correctly.
+
+This was another useful reminder that testing the repository from scratch can catch issues that are easy to miss in an existing development environment.
+
+---
+
+# Main Technologies
+
+- **Python**
 - **FastAPI**
-- **Uvicorn**
-- **Jinja2**
-- **HTML / CSS / JavaScript**
+- **SQLite**
+- **yfinance / Pandas**
+- **Jinja2 / HTML / CSS / JavaScript**
 - **pytest**
-- **FastAPI TestClient / httpx**
 - **Docker**
-- **Docker Volumes**
 - **GitHub Actions**
-- **Git**
-- **GitHub**
 
----
-
-# Running the Project Locally
-
-Clone the repository:
-
-```bash
-git clone https://github.com/aaronalonsotorrens/stock-data-project.git
-cd stock-data-project
-```
-
-Create and activate a virtual environment:
-
-```powershell
-python -m venv venv
-venv\Scripts\activate
-```
-
-Install the dependencies:
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-Initialise the database and load Apple stock data:
-
-```powershell
-python run.py
-```
-
-Start the application:
-
-```powershell
-python -m uvicorn app.main:app --reload
-```
-
-Open:
-
-```text
-http://localhost:8000
-```
-
-or the Swagger interface:
-
-```text
-http://localhost:8000/docs
-```
-
-To run the automated tests:
-
-```powershell
-python -m pytest
-```
+Supporting tools such as Black, httpx and Git were also used during development and testing.
 
 ---
 
@@ -790,22 +811,23 @@ pandas==3.0.5
 Jinja2==3.1.6
 pytest==9.1.1
 httpx==0.28.1
+black==26.5.1
 ```
 
-Pinning the versions makes the project more repeatable across local development, Docker and GitHub Actions.
+Pinning the versions makes the environment more repeatable across local development, Docker and GitHub Actions.
 
 ---
 
 # Current Limitations / Improvements
 
-This is deliberately a small project and there are still several things I would improve if it needed to go further.
+This is deliberately a small project, so there are several things I would improve if it needed to go further.
 
-Some of the main ones would be:
+The main ones would be:
 
 - Schedule ingestion automatically rather than triggering it manually.
 - Add retry handling for temporary Yahoo Finance failures.
 - Replace `print()` statements with proper application logging.
-- Expand automated testing around external API failures and record updates.
+- Expand testing around external API failures and record updates.
 - Add Pydantic response models to make the API contracts clearer.
 - Move FastAPI's startup logic to the newer lifespan approach.
 - Add pagination if significantly more historical data was stored.
@@ -825,13 +847,13 @@ I used it to help:
 
 - Talk through architecture choices.
 - Break the task into smaller steps.
-- Explain unfamiliar parts of FastAPI, Docker, Jinja2 and GitHub Actions.
+- Understand unfamiliar parts of FastAPI, Docker, Jinja2 and GitHub Actions.
 - Debug issues as they appeared.
 - Review the project structure and documentation.
 
 I worked through the application one part at a time and tested each stage rather than generating the whole project and assuming it worked.
 
-That was particularly useful because several of the final design decisions came directly from problems I found while actually running the application.
+Several of the final decisions also came directly from issues I found while actually running and testing the application.
 
 ---
 
@@ -856,10 +878,8 @@ FastAPI
         ↓
 HTML frontend
         ↓
-Docker deployment
-
+Docker
         +
-
 Automated tests
         ↓
 GitHub Actions CI

@@ -60,22 +60,28 @@
 
         {% else %}
 
+            <!--
+                A fresh database will not contain any stock data yet.
+                Keep the empty state clear so the user knows this is expected
+                and what they need to do next.
+            -->
             <section
                 class="card latest-card"
                 aria-labelledby="no-data-heading"
             >
 
                 <h2 id="no-data-heading">
-                    No Stock Data Yet
+                    No Apple Stock Data Loaded Yet
                 </h2>
 
                 <p>
-                    There is currently no Apple stock data stored in the
-                    application.
+                    This is a fresh database. Load the latest available AAPL
+                    data from Yahoo Finance to get started.
                 </p>
 
-                <p>
-                    Use the button below to fetch the latest available data.
+                <p class="secondary-text">
+                    Once the data has been loaded, it will be stored in the
+                    application database and displayed below.
                 </p>
 
             </section>

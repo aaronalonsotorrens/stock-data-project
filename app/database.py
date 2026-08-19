@@ -1,7 +1,6 @@
 import sqlite3
 from pathlib import Path
 
-
 # Work out where the main project folder is.
 # Using a path like this means the database location doesn't depend
 # on which folder I happen to run the Python command from.
@@ -38,8 +37,7 @@ def initialise_database():
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS stock_prices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ticker TEXT NOT NULL,
@@ -51,8 +49,7 @@ def initialise_database():
             volume INTEGER NOT NULL,
             UNIQUE(ticker, date)
         )
-        """
-    )
+        """)
 
     connection.commit()
     connection.close()

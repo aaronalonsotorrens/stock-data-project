@@ -7,7 +7,6 @@ from fastapi.templating import Jinja2Templates
 from app.database import get_connection, initialise_database
 from app.ingestion import ingest_stock_data
 
-
 # Create the FastAPI app.
 # FastAPI also gives us an interactive /docs page, which is handy
 # for testing the API directly.
@@ -93,9 +92,7 @@ def health():
     This is useful if I just want to confirm the service itself is alive.
     """
 
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}
 
 
 @app.get("/stocks/{ticker}")

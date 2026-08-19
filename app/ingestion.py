@@ -47,10 +47,7 @@ def store_stock_data(data, ticker="AAPL"):
         # Sometimes the API can return an incomplete row.
         # I'd rather skip that row than store incomplete stock data.
         if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
-            print(
-                f"Skipping incomplete data for "
-                f"{date.strftime('%Y-%m-%d')}."
-            )
+            print(f"Skipping incomplete data for " f"{date.strftime('%Y-%m-%d')}.")
 
             rows_skipped += 1
             continue
@@ -127,10 +124,7 @@ def ingest_stock_data(ticker="AAPL"):
             ticker,
         )
 
-        print(
-            f"Stored {rows_stored} rows. "
-            f"Skipped {rows_skipped} rows."
-        )
+        print(f"Stored {rows_stored} rows. " f"Skipped {rows_skipped} rows.")
 
         return {
             "ticker": ticker.upper(),

@@ -15,9 +15,7 @@ def test_health_endpoint():
         response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "status": "healthy"
-    }
+    assert response.json() == {"status": "healthy"}
 
 
 def test_unknown_ticker_returns_404():
@@ -31,9 +29,7 @@ def test_unknown_ticker_returns_404():
 
     assert response.status_code == 404
 
-    assert response.json() == {
-        "detail": "No stored data found for THISSHOULDNOTEXIST"
-    }
+    assert response.json() == {"detail": "No stored data found for THISSHOULDNOTEXIST"}
 
 
 def test_homepage_loads():

@@ -748,42 +748,6 @@ This was probably one of the more useful issues I hit because CI found something
 
 ---
 
-## Stylesheet Filename Mismatch
-
-When I tested the project from a completely fresh clone, the frontend loaded but none of the styling appeared.
-
-The application logs showed:
-
-```text
-GET /static/styles.css 404 Not Found
-```
-
-The HTML was requesting:
-
-```text
-styles.css
-```
-
-but the repository still contained:
-
-```text
-style.css
-```
-
-I renamed the file so they matched, rebuilt the Docker image and repeated the clean-clone test.
-
-The stylesheet then returned:
-
-```text
-200 OK
-```
-
-and the frontend loaded correctly.
-
-This was another useful reminder that testing the repository from scratch can catch issues that are easy to miss in an existing development environment.
-
----
-
 # Main Technologies
 
 - **Python**
@@ -824,16 +788,16 @@ This is deliberately a small project, so there are several things I would improv
 
 The main ones would be:
 
-- Schedule ingestion automatically rather than triggering it manually.
-- Add retry handling for temporary Yahoo Finance failures.
-- Replace `print()` statements with proper application logging.
-- Expand testing around external API failures and record updates.
-- Add Pydantic response models to make the API contracts clearer.
-- Move FastAPI's startup logic to the newer lifespan approach.
-- Add pagination if significantly more historical data was stored.
-- Move from SQLite to PostgreSQL for a larger multi-user application.
-- Add authentication if the API was publicly accessible.
-- Deploy the Docker application to a cloud environment if public access was required.
+- Automatic ingestion – At the moment, ingestion only runs when the user clicks the refresh button or calls the ingestion endpoint. For a real application, I would probably schedule this to run automatically, for example once after the US market closes each trading day.
+- Retry handling – The ingestion currently relies on the Yahoo Finance request succeeding. I would add retry handling for temporary network or Yahoo Finance failures rather than failing immediately.
+- Better logging – The ingestion process currently uses print() for things such as skipped records. I would replace this with proper application logging so errors, skipped rows and successful ingestion runs are easier to track.
+- More testing around Yahoo Finance – I would expand the tests to cover things such as Yahoo Finance returning no data, temporary failures or unexpected responses. I would also test that an existing ticker/date record is correctly updated when its values change.
+- Clearer API models – The API currently returns the database records directly. I would add Pydantic response models so the expected API responses are more clearly defined and validated.
+- FastAPI lifespan handling – The database setup currently runs through FastAPI's startup logic. I would move this to the newer lifespan approach.
+- Pagination or date filtering – The project currently only stores a relatively small amount of AAPL data, so returning all the records is fine. If several years of data were stored, I would add pagination or allow users to request a particular date range.
+- Larger database – SQLite works well for the current size of the project, but if it needed to support more data, multiple users or several application instances, I would probably move the storage layer to PostgreSQL.
+- Authentication – There is currently no authentication because the application is only intended to run locally. If the API was publicly accessible, I would add authentication and restrict who could trigger ingestion.
+- Cloud deployment – The application currently runs locally through Docker. If public access was required, the Docker image could be deployed to a cloud environment rather than only running on the user's machine.
 
 I deliberately did not add things such as Kubernetes, Kafka, Airflow or multiple services because they would add more complexity than this small application needs.
 

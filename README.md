@@ -128,9 +128,18 @@ The project can also be run directly with Python.
 
 Create and activate a virtual environment:
 
+**Windows**
+
 ```powershell
 python -m venv venv
 venv\Scripts\activate
+```
+
+**macOS/Linux**
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 Install the dependencies:

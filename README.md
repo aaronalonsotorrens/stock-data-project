@@ -19,12 +19,111 @@ The application currently:
 - Runs locally or through Docker.
 - Uses a Docker volume so the SQLite database persists between containers.
 - Includes automated tests using pytest.
+- Uses temporary databases during ingestion tests so the real local database is not changed.
 - Uses GitHub Actions to automatically run the tests after code changes.
 
 The main stock used and tested throughout the project is:
 
 ```text
 AAPL
+```
+
+---
+
+## Quick Start
+
+The easiest way to run the project is through Docker.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/aaronalonsotorrens/stock-data-project.git
+cd stock-data-project
+```
+
+### 2. Build the Docker image
+
+```powershell
+docker build -t stock-data-api .
+```
+
+### 3. Create the persistent database volume
+
+```powershell
+docker volume create stock-data
+```
+
+### 4. Start the application
+
+```powershell
+docker run --name stock-data-container -p 8000:8000 -v stock-data:/app/data stock-data-api
+```
+
+### 5. Open the application
+
+Frontend:
+
+```text
+http://localhost:8000
+```
+
+FastAPI / Swagger documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+If the database is empty, click **Refresh Stock Data** on the frontend.
+
+Alternatively, ingestion can be triggered directly through the API:
+
+```text
+POST /stocks/AAPL/ingest
+```
+
+This fetches the latest available Apple stock data from Yahoo Finance and stores it in SQLite.
+
+---
+
+### Running Without Docker
+
+The project can also be run directly with Python.
+
+Create and activate a virtual environment:
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
+```
+
+Install the dependencies:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Initialise the database and fetch Apple stock data:
+
+```powershell
+python run.py
+```
+
+Start the application:
+
+```powershell
+python -m uvicorn app.main:app --reload
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+The API documentation is available at:
+
+```text
+http://localhost:8000/docs
 ```
 
 ---
@@ -99,7 +198,8 @@ stock-data-project/
 │   └── .gitkeep
 │
 ├── tests/
-│   └── test_api.py
+│   ├── test_api.py
+│   └── test_ingestion.py
 │
 ├── .dockerignore
 ├── .gitignore
@@ -116,6 +216,7 @@ The main responsibilities are split between:
 - `main.py` – FastAPI endpoints and frontend route.
 - `index.html` – small user-facing frontend.
 - `test_api.py` – automated API/frontend tests.
+- `test_ingestion.py` – automated tests for ingestion validation and duplicate handling.
 
 ---
 
@@ -170,6 +271,8 @@ if row[["Open", "High", "Low", "Close", "Volume"]].isna().any():
 ```
 
 This allows valid rows to continue being stored while incomplete records are skipped.
+
+I also added an automated test around this behaviour to make sure an incomplete row is skipped and is not written to the database.
 
 ---
 
@@ -243,6 +346,8 @@ DO UPDATE
 so the existing record is updated instead.
 
 This means the ingestion can safely be run more than once.
+
+I added an automated test that stores the same ticker and date twice and checks that only one database record exists afterwards.
 
 ---
 
@@ -441,13 +546,19 @@ Some of the main checks completed were:
 
 ## Automated Tests
 
-I added a small pytest test suite using FastAPI's `TestClient`.
+I added a small pytest test suite using FastAPI's `TestClient` and temporary SQLite databases.
 
-The current tests check that:
+The current automated tests check that:
 
 - `/health` returns a successful response.
 - An unknown ticker returns `404`.
 - The HTML homepage loads successfully.
+- An incomplete stock row is skipped rather than stored.
+- Ingesting the same ticker and date twice does not create a duplicate record.
+
+The ingestion tests use a temporary SQLite database rather than my normal `stocks.db`.
+
+This means the tests can check database behaviour without changing the real local application data.
 
 The tests can be run using:
 
@@ -458,12 +569,10 @@ python -m pytest
 Current result:
 
 ```text
-3 passed
+5 passed
 ```
 
-I kept the initial suite small rather than trying to test every line of the project.
-
-With more time, I would add tests specifically around incomplete ingestion rows and duplicate ticker/date handling.
+I kept the suite focused on a few behaviours that are important to this project rather than trying to test every line of code.
 
 ---
 
@@ -485,6 +594,8 @@ Installs requirements
 Runs pytest
 ```
 
+The same five automated tests are therefore run in a fresh environment whenever the workflow is triggered.
+
 This became particularly useful because CI exposed a hidden problem with my tests relying on my local database.
 
 ---
@@ -496,6 +607,8 @@ This became particularly useful because CI exposed a hidden problem with my test
 Yahoo Finance returned an incomplete row, which caused the SQLite `NOT NULL` constraint to fail.
 
 I kept the database constraint and added validation in the ingestion layer so incomplete rows are skipped instead.
+
+I later added an automated test for this behaviour so it can be checked without relying on Yahoo Finance returning another incomplete row.
 
 ---
 
@@ -616,7 +729,7 @@ This was probably one of the more useful issues I hit because CI caught somethin
 Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aaronalonsotorrens/stock-data-project.git
 cd stock-data-project
 ```
 
@@ -657,6 +770,12 @@ or the Swagger interface:
 http://localhost:8000/docs
 ```
 
+To run the automated tests:
+
+```powershell
+python -m pytest
+```
+
 ---
 
 # Requirements
@@ -686,7 +805,7 @@ Some of the main ones would be:
 - Schedule ingestion automatically rather than triggering it manually.
 - Add retry handling for temporary Yahoo Finance failures.
 - Replace `print()` statements with proper application logging.
-- Add more automated tests around ingestion and database behaviour.
+- Expand automated testing around external API failures and record updates.
 - Add Pydantic response models to make the API contracts clearer.
 - Move FastAPI's startup logic to the newer lifespan approach.
 - Add pagination if significantly more historical data was stored.

@@ -3,302 +3,247 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Apple Stock Data</title>
 
-    <style>
-        /* Keep the page simple and readable without needing a separate CSS file. */
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1100px;
-            margin: 40px auto;
-            padding: 0 20px;
-            background: #f5f5f5;
-            color: #222;
-        }
-
-        h1 {
-            margin-bottom: 5px;
-        }
-
-        h2 {
-            margin-top: 0;
-        }
-
-        .intro {
-            margin-bottom: 25px;
-            line-height: 1.6;
-        }
-
-        /* Reusable card style for the latest stock information. */
-        .latest {
-            background: white;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 8px;
-        }
-
-        .price {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 5px 0;
-        }
-
-        .refresh-section {
-            margin: 20px 0;
-        }
-
-        button {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-
-        button:disabled {
-            cursor: not-allowed;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            margin-top: 20px;
-        }
-
-        th,
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: right;
-        }
-
-        /* Keep the date column aligned differently from the numeric values. */
-        th:first-child,
-        td:first-child {
-            text-align: left;
-        }
-
-        th {
-            background: #eeeeee;
-        }
-
-        .about {
-            background: white;
-            padding: 20px;
-            margin-top: 30px;
-            border-radius: 8px;
-            line-height: 1.6;
-        }
-
-        .api-link {
-            margin-top: 15px;
-        }
-
-        a {
-            color: #0066cc;
-        }
-
-        .status-message {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-    </style>
+    <link
+        rel="stylesheet"
+        href="/static/styles.css"
+    >
 </head>
 
 <body>
 
-    <h1>Apple Stock Data</h1>
+    <main>
 
-    <div class="intro">
-        <p>
-            This page shows the Apple stock data currently stored by the application.
-            The data is fetched from Yahoo Finance and stored in a SQLite database.
-        </p>
+        <header>
+            <h1>Apple Stock Data</h1>
 
-        <p>
-            You can use the refresh button below to fetch the latest available
-            Apple stock data and update the database.
-        </p>
-    </div>
+            <p class="intro">
+                View the Apple stock data currently stored by this application
+                and refresh it with the latest available data from Yahoo Finance.
+            </p>
+        </header>
 
 
-    <!--
-        Jinja checks whether FastAPI passed a latest stock record into the template.
-        If data exists, we show the latest price. Otherwise we show a helpful message.
-    -->
-    {% if latest %}
+        <!-- Show the latest stored record if one is available. -->
+        {% if latest %}
 
-        <div class="latest">
+            <section
+                class="card latest-card"
+                aria-labelledby="latest-price-heading"
+            >
 
-            <h2>Latest Stored Price</h2>
+                <h2 id="latest-price-heading">
+                    Latest Stored Closing Price
+                </h2>
 
-            <!-- Format the stored close price to two decimal places. -->
-            <p class="price">
-                ${{ "%.2f"|format(latest.close) }}
+                <p class="price">
+                    ${{ "%.2f"|format(latest.close) }}
+                </p>
+
+                <p>
+                    AAPL on {{ latest.date }}
+                </p>
+
+                <p class="secondary-text">
+                    This is the most recent value stored by the application.
+                    It should not be treated as a live market price.
+                </p>
+
+            </section>
+
+        {% else %}
+
+            <section
+                class="card latest-card"
+                aria-labelledby="no-data-heading"
+            >
+
+                <h2 id="no-data-heading">
+                    No Stock Data Yet
+                </h2>
+
+                <p>
+                    There is currently no Apple stock data stored in the
+                    application.
+                </p>
+
+                <p>
+                    Use the button below to fetch the latest available data.
+                </p>
+
+            </section>
+
+        {% endif %}
+
+
+        <section
+            class="refresh-section"
+            aria-labelledby="refresh-heading"
+        >
+
+            <h2 id="refresh-heading">
+                Update the Data
+            </h2>
+
+            <button
+                id="refresh-button"
+                type="button"
+                onclick="refreshData()"
+                aria-describedby="refresh-help"
+            >
+                {% if latest %}
+                    Refresh Stock Data
+                {% else %}
+                    Load Apple Stock Data
+                {% endif %}
+            </button>
+
+            <p
+                id="refresh-help"
+                class="button-help"
+            >
+                This requests the latest available AAPL data from Yahoo Finance
+                and saves it to the application database.
+            </p>
+
+            <!--
+                aria-live allows assistive technology to announce
+                the result of the refresh request.
+            -->
+            <p
+                id="status-message"
+                class="status-message"
+                aria-live="polite"
+                role="status"
+            ></p>
+
+        </section>
+
+
+        {% if stock_data %}
+
+            <section aria-labelledby="stored-data-heading">
+
+                <h2 id="stored-data-heading">
+                    Stored Stock Data
+                </h2>
+
+                <p class="secondary-text">
+                    Daily Apple stock records currently stored by the application.
+                    The newest trading date appears first.
+                </p>
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <caption>
+                            Stored AAPL daily prices
+                        </caption>
+
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Open</th>
+                                <th scope="col">High</th>
+                                <th scope="col">Low</th>
+                                <th scope="col">Close</th>
+                                <th scope="col">Volume</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            {% for row in stock_data %}
+
+                                <tr>
+                                    <td>{{ row.date }}</td>
+                                    <td>${{ "%.2f"|format(row.open) }}</td>
+                                    <td>${{ "%.2f"|format(row.high) }}</td>
+                                    <td>${{ "%.2f"|format(row.low) }}</td>
+                                    <td>${{ "%.2f"|format(row.close) }}</td>
+                                    <td>{{ "{:,}".format(row.volume) }}</td>
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
+
+        <section
+            class="card about"
+            aria-labelledby="about-heading"
+        >
+
+            <h2 id="about-heading">
+                About the Data
+            </h2>
+
+            <p>
+                This page shows Apple stock data fetched from Yahoo Finance
+                and stored by this application.
             </p>
 
             <p>
-                AAPL on {{ latest.date }}
+                The values shown here are stored daily records and should not
+                be treated as live market prices.
             </p>
 
             <p>
-                This is the most recent record currently stored in the database.
+                Looking for the technical API?
+                <a href="/docs">
+                    Open the API documentation
+                </a>
             </p>
 
-        </div>
+        </section>
 
-    {% else %}
-
-        <div class="latest">
-
-            <h2>No Stock Data Yet</h2>
-
-            <p>
-                There is currently no Apple stock data stored in the database.
-                Use the button below to load the latest available data.
-            </p>
-
-        </div>
-
-    {% endif %}
-
-
-    <div class="refresh-section">
-
-        <!--
-            Change the button text depending on whether data already exists.
-            This makes the page a bit clearer for somebody using it for the first time.
-        -->
-        <button id="refresh-button" onclick="refreshData()">
-            {% if latest %}
-                Refresh Stock Data
-            {% else %}
-                Load Apple Stock Data
-            {% endif %}
-        </button>
-
-        <p>
-            This will request fresh AAPL data from Yahoo Finance and save it
-            into the SQLite database.
-        </p>
-
-        <!-- JavaScript updates this with progress or error messages. -->
-        <p id="status-message" class="status-message"></p>
-
-    </div>
-
-
-    <!-- Only show the table if we actually have stock data to display. -->
-    {% if stock_data %}
-
-        <h2>Stored Stock Data</h2>
-
-        <p>
-            The table below shows the daily Apple stock records currently
-            stored in the database, with the newest dates first.
-        </p>
-
-        <table>
-
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Open</th>
-                    <th>High</th>
-                    <th>Low</th>
-                    <th>Close</th>
-                    <th>Volume</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                <!--
-                    Jinja loops through each row returned from SQLite
-                    and creates one HTML table row for each stock record.
-                -->
-                {% for row in stock_data %}
-
-                    <tr>
-                        <td>{{ row.date }}</td>
-                        <td>${{ "%.2f"|format(row.open) }}</td>
-                        <td>${{ "%.2f"|format(row.high) }}</td>
-                        <td>${{ "%.2f"|format(row.low) }}</td>
-                        <td>${{ "%.2f"|format(row.close) }}</td>
-                        <td>{{ "{:,}".format(row.volume) }}</td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    {% endif %}
-
-
-    <div class="about">
-
-        <h2>About This Project</h2>
-
-        <p>
-            This is a small data engineering project showing a simple flow
-            from an external data source through to storage and a display layer.
-        </p>
-
-        <pre>
-Yahoo Finance
-      ↓
-Data ingestion
-      ↓
-SQLite database
-      ↓
-FastAPI
-      ↓
-This page
-        </pre>
-
-        <p>
-            The application also exposes the stored data directly through
-            API endpoints.
-        </p>
-
-        <p class="api-link">
-            <a href="/docs">
-                Open the FastAPI API documentation
-            </a>
-        </p>
-
-    </div>
+    </main>
 
 
     <script>
         /*
-            Refresh the stock data without making the user manually
-            visit the POST endpoint in Swagger.
+            Refresh the stock data from the frontend so a user
+            does not need to know how to call the API manually.
         */
         async function refreshData() {
 
-            const button = document.getElementById("refresh-button");
-            const statusMessage = document.getElementById("status-message");
+            const button =
+                document.getElementById("refresh-button");
 
-            // Disable the button while the request is running so it
-            // isn't clicked several times by accident.
+            const statusMessage =
+                document.getElementById("status-message");
+
+            const originalButtonText = button.innerText;
+
             button.disabled = true;
             button.innerText = "Updating...";
 
+            statusMessage.classList.remove(
+                "status-success",
+                "status-error"
+            );
+
             statusMessage.innerText =
-                "Fetching the latest available stock data...";
+                "Fetching the latest available stock data. Please wait.";
 
             try {
 
-                /*
-                    Call the FastAPI ingestion endpoint.
-                    This fetches fresh AAPL data and stores it in SQLite.
-                */
                 const response = await fetch(
                     "/stocks/AAPL/ingest",
                     {
@@ -308,12 +253,13 @@ This page
 
                 if (!response.ok) {
                     throw new Error(
-                        "The stock data could not be updated."
+                        "The stock data could not be updated. Please try again."
                     );
                 }
 
-                // Read the ingestion summary returned by FastAPI.
                 const result = await response.json();
+
+                statusMessage.classList.add("status-success");
 
                 statusMessage.innerText =
                     "Update complete. Fetched " +
@@ -325,8 +271,8 @@ This page
                     ".";
 
                 /*
-                    Give the user a moment to see the result before
-                    reloading the page with the latest stored values.
+                    Give the user a moment to read the result
+                    before refreshing the displayed data.
                 */
                 setTimeout(
                     function () {
@@ -337,11 +283,13 @@ This page
 
             } catch (error) {
 
-                // Keep the page usable if the API request fails.
-                statusMessage.innerText = error.message;
+                statusMessage.classList.add("status-error");
+
+                statusMessage.innerText =
+                    "Update failed. " + error.message;
 
                 button.disabled = false;
-                button.innerText = "Refresh Stock Data";
+                button.innerText = originalButtonText;
             }
         }
     </script>

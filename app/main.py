@@ -2,10 +2,12 @@ import sqlite3
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.database import get_connection, initialise_database
 from app.ingestion import ingest_stock_data
+
 
 # Create the FastAPI app.
 # FastAPI also gives us an interactive /docs page, which is handy
@@ -14,6 +16,15 @@ app = FastAPI(
     title="Stock Data API",
     description="A small API for storing and retrieving Apple stock data.",
     version="1.0.0",
+)
+
+
+# Serve the small static files used by the frontend.
+# At the moment this is mainly the CSS stylesheet.
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
 )
 
 
@@ -36,8 +47,8 @@ def home(request: Request):
     """
     Show a simple frontend with the Apple stock data.
 
-    I wanted something a bit easier to look at than just the Swagger
-    page, while still keeping the frontend pretty small.
+    I wanted something easier to use than just the Swagger page,
+    while still keeping the frontend small and focused.
     """
 
     connection = get_connection()

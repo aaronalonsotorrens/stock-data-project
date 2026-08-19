@@ -1,0 +1,232 @@
+/*
+    Keep the styling simple and focused on clarity.
+
+    The frontend is deliberately small, but I still wanted the main
+    actions and data to be easy to understand and use.
+*/
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f7fa;
+    color: #222;
+    line-height: 1.5;
+}
+
+main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+header {
+    margin-bottom: 30px;
+}
+
+h1 {
+    margin: 0 0 8px;
+    font-size: 2rem;
+}
+
+h2 {
+    margin-top: 0;
+}
+
+.intro {
+    max-width: 750px;
+    margin: 0;
+    color: #555;
+}
+
+
+/* Reusable card style. */
+.card {
+    background: white;
+    padding: 24px;
+    margin: 20px 0;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+}
+
+
+/*
+    Give the latest price slightly more visual importance
+    without turning the page into a dashboard.
+*/
+.latest-card {
+    border-left: 5px solid #2563eb;
+}
+
+.price {
+    margin: 8px 0;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.secondary-text {
+    color: #5d6470;
+}
+
+
+/* Main action area. */
+.refresh-section {
+    margin: 30px 0 40px;
+}
+
+button {
+    padding: 12px 18px;
+    border: 2px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid #111827;
+    outline-offset: 3px;
+}
+
+button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.button-help {
+    margin-top: 8px;
+    color: #5d6470;
+    font-size: 0.95rem;
+}
+
+
+/*
+    Leave some space for the message even before one appears,
+    so the layout does not suddenly move after an update.
+*/
+.status-message {
+    min-height: 24px;
+    margin-top: 12px;
+    font-weight: bold;
+}
+
+.status-success {
+    color: #166534;
+}
+
+.status-error {
+    color: #b42318;
+}
+
+
+/* Allow the table to scroll horizontally on smaller screens. */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 16px;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+}
+
+table {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    background: white;
+}
+
+caption {
+    text-align: left;
+    padding: 0 0 10px;
+    font-weight: bold;
+}
+
+th,
+td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: right;
+    white-space: nowrap;
+}
+
+th {
+    background: #eef2f7;
+    font-weight: bold;
+}
+
+th:first-child,
+td:first-child {
+    text-align: left;
+}
+
+
+/* Subtle alternating rows make the table easier to scan. */
+tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+tbody tr:hover {
+    background: #eef4ff;
+}
+
+
+/*
+    The first row is the newest because the database query
+    orders the records by date descending.
+*/
+tbody tr:first-child {
+    background: #edf4ff;
+    font-weight: bold;
+}
+
+tbody tr:first-child td:first-child::after {
+    content: " Latest";
+    margin-left: 8px;
+    color: #2563eb;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+
+.about {
+    margin-top: 40px;
+}
+
+a {
+    color: #1d4ed8;
+}
+
+
+/* Keep the page usable on smaller screens. */
+@media (max-width: 600px) {
+    main {
+        padding: 25px 15px;
+    }
+
+    h1 {
+        font-size: 1.7rem;
+    }
+
+    .price {
+        font-size: 1.7rem;
+    }
+
+    .card {
+        padding: 18px;
+    }
+
+    button {
+        width: 100%;
+    }
+}

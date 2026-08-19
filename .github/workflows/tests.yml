@@ -11,15 +11,12 @@ on:
     branches:
       - main
 
-
 jobs:
   test:
-
     # GitHub gives us a fresh temporary machine to run the project on.
     runs-on: ubuntu-latest
 
     steps:
-
       # Get the latest version of the repository code.
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -36,7 +33,18 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      # Run the same automated tests that I run locally.
+      # Check that all Python files follow the same formatting.
+      - name: Check Python formatting
+        run: |
+          python -m black . --check
+
+      # Run the automated test suite.
       - name: Run tests
         run: |
           python -m pytest
+
+      # Make sure the Docker image can still be built
+      # from the current version of the project.
+      - name: Build Docker image
+        run: |
+          docker build -t stock-data-api .
